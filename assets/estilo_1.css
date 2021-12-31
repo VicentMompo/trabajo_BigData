@@ -1,0 +1,135 @@
+/*
+#header{
+
+  position: fixed;
+  top: 0;
+  width: 50.25%;
+  padding: 5px 5px;
+  background-color: white;
+  box-shadow: 2px 2px 5px  #7FB3D5;
+
+}
+*/
+
+  
+body {
+    font-family: "Lato","Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-size: 15px;
+    line-height: 1.42857143;
+    color: #ffffff;
+    background-color: #e0e0e0;
+}
+
+.row{
+  background-color:  white;
+  color: black;
+   
+}
+
+.container-fluid main-container{
+  box-shadow: 2px 2px 5px  #7FB3D5 ;
+}
+
+.toc-content{
+   box-shadow: 2px 2px 5px  #7FB3D5;
+}
+
+pre{
+    box-shadow: 2px 2px 5px  #7FB3D5 ;
+}
+
+
+.list-group-item.active:hover {
+   background-color: #04A0BC;
+}
+
+.list-group-item.active {
+   background-color: #04A0BC;
+}
+
+.tocify-item {
+  background-color: #424254;
+  box-shadow: 2px 2px 5px  #7FB3D5;
+  color: white;
+}
+
+.tocify {
+  box-shadow: 2px 2px 10px #666;
+  border-radius: 5px;
+  color: white;
+}
+
+tab{
+  background-color: red;
+}
+
+.btn {
+  border-color: #5DADE2;
+  box-shadow: 2px 2px 10px #666;
+}
+
+h1, h3 {
+  text-align: center;
+}
+
+h1 {
+  color: #D4E6F1; 
+  text-shadow: black 0.1em 0.1em 0.2em;
+  background-color: #424254;
+  color: white; text-shadow: black 0.1em 0.1em 0.2em;
+  box-shadow: 2px 2px 10px #666;
+  
+}
+
+h2 {
+  font-weight: bold;
+  background-color: #04A0BC;
+  color: white; text-shadow: black 0.1em 0.1em 0.2em;
+  box-shadow: 2px 2px 10px #666;
+  
+} 
+
+h3 {
+  background-color: #85C1E9;
+  color: white; text-shadow: black 0.1em 0.1em 0.2em;
+  box-shadow: 2px 2px 10px #666;
+} 
+
+h4{
+  color:black;
+  font-weight: bold;
+  background-color:white;
+  box-shadow: 2px 2px 10px #666;
+  
+}
+
+/*estilos para la tabla*/
+table th {
+background-color: #5DADE2 ;
+color: white;   
+}
+
+.nav-pills>li.active>a, .nav-pills>li.active>a:hover, .nav-pills>li.active>a:focus {
+    color: white;
+    background-color: #424254;
+}
+
+.nav>li>a:hover, .nav>li>a:focus {
+    text-decoration: white;
+    background-color: white;
+    0d: ;
+    4ce: ;
+}
+
+.nav-tabs > li > a, .nav-pills > li > a {
+    color: #424254;
+}
+
+a:hover, a:focus {
+    color: #5DADE2;
+    text-decoration: underline;
+}
+a {
+    color: #5DADE2;
+    text-decoration: none;
+}

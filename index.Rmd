@@ -1,0 +1,1015 @@
+---
+title: "Sostenibildad de la deuda pública española"
+author: "Vicent Mompo Crespo (momcres@alumni.uv.es). \n\n Universitat de València"
+date: "Diciembre de 2021 (actualizado el `r format(Sys.time(), '%d-%m-%Y')`)"
+output:
+  html_document: 
+    css: "./assets/estilo_1.css"
+    self_contained: true
+    code_download: true
+    code_folding: "hide"
+    theme: dark
+    toc: yes
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+    df_print: kable
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r packages-setup, include = FALSE}
+library(tidyverse)
+library(klippy)   #remotes::install_github("rlesur/klippy")
+library(knitr)
+library(rio)
+library(readxl)
+library(countrycode)
+library(ggflags)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(hrbrthemes)
+library(kableExtra)
+options(knitr.table.format = "html")
+library(streamgraph)
+library(viridis)
+library(DT)
+library(plotly)
+library(gganimate)
+library(xts)
+library(dygraphs)
+library(treemap)
+library(gifski)
+library(rgdal)
+library(broom)
+library(scales)
+library(sp)
+library(gt)
+library(png)
+library(equatiomatic) #remotes::install_github("datalorax/equatiomatic")
+library(vembedr) #install.packages("vembedr")
+
+pacman::p_load(raster, rgdl, rgeos, broom)
+pacman::p_load(knitr, here, tidyverse, patchwork, ggrepel)
+pacman::p_load(sf, rnaturalearth, rnaturalearthdata, ggspatial, mapview, leafem, leaflet)
+
+#devtools::install_github("dgrtwo/gganimate")
+#install.packages ("treemap")
+#install.packages("hrbrthemes")
+#install.packages("kableExtra")
+#devtools::install_github("hrbrmstr/streamgraph")
+#if (!require("devtools")) 
+  #install.packages("devtools")
+
+#devtools::install_github("sjmgarnier/viridis")
+
+```
+
+
+```{r chunk-setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, message = FALSE, warning = FALSE, 
+                      #results = "hold",
+                      cache = FALSE, cache.path = "/caches/", comment = "#>",
+                      #fig.width = 7, #fig.height= 7,   
+                      #out.width = 7, out.height = 7,
+                      collapse = TRUE,  fig.show = "hold",
+                      fig.asp = 0.628, out.width = "95%", fig.align = "center")
+knitr::opts_chunk$set(dev = "png", dev.args = list(type = "cairo-png"))
+```
+
+```{r options-setup, include = FALSE}
+options(scipen = 999) #- para quitar la notación científica
+options("yaml.eval.expr" = TRUE) 
+```
+
+
+```{r klippy, echo = FALSE}
+klippy::klippy(position = c("top", "right")) #- remotes::install_github("rlesur/klippy")
+```
+
+<div style="text-align: justify"><div/>
+
+<hr class="linea-black">
+
+<!-- El párrafo de abajo has de dejarlo casi igual, solo HAS de SUSTITUIR "perezp44" por tu usuario de Github-->
+Trabajo elaborado para la asignatura "Programación y manejo de datos en la era del Big Data" de la Universitat de València durante el curso 2021-2022. El repo del trabajo está [aquí](https://github.com/VicentMompo/trabajo_BigData){target="_blank"}. 
+
+<!-- El párrafo de abajo has de dejarlo exactamente igual, NO has de cambiar nada-->
+
+La página web de la asignatura y los trabajos de mis compañeros pueden verse [aquí](https://perezp44.github.io/intro-ds-21-22-web/07-trabajos.html){target="_blank"}.
+
+<hr class="linea-red">
+
+
+## 1. Introducción
+
+Para la asignatura de "Programación y manejo de datos en la era del Big Data" he decidido realizar un ensayo (en formato rmd) sobre un tema que me ha estado rondando la cabeza desde la finalización de mi trabajo grupal sobre la inflación (*La inflación en tiempos de pandemia*), se trata del estudio de la **sostenibilidad de la deuda española**. 
+
+**Resumen:** La deuda pública española se sitúa por primera vez en las últimas décadas por encima del 120%, en un contexto de bajos tipos de interés, inflación elevada y con unos problemas estructurales encabezados por el problema del sistema de reparto de las pensiones públicas españolas y su estructura productiva, limitando así los factores que permiten la sostenibilidad de cualquier deuda pública en largo plazo.
+
+**The Abstract:** For the first time in recent decades, Spanish public debt has risen above 120%, in a context of low interest rates, high inflation and structural problems led by the problem of the Spanish public pension distribution system and its productive structure, thus limiting the factors that allow the sustainability of any public debt in the long term.
+
+**Palabras Clave:** Deuda, Sostenibilidad, España, Déficit, Gasto, Ingrsos, Pensiones, Ratio, Deuda/PIB, tasa, interés, amortización, coste.
+
+## 2. Motivaciones
+
+Al igual que la *inflación*, la presentación de resultados en los últimos trimestres sobre la  **deuda pública española** se ha caracterizado por mostrar consecutivamente **nuevos máximos históricos**.  Aunque sus causas son completamente opuestas al de la inflación (como posteriormente expondremos) considero que es un tema de estudio completamente relacionado con mi *trabajo grupal*, especialmente en sus conclusiones acerca de la política adoptada por el Banco Central Europeo, caracterizada por un mantenimiento de tipos de interés bajos en el corto/medio plazo. 
+
+Por similitud sobre la temática de los trabajos, note el lector que las motivaciones no van a variar en gran medida, y, por tanto, se podrían resumir en los siguientes:
+
+-	Estudiar este fenómeno en nuestra economía doméstica. Al igual que con el caso de la inflación, el contexto de una ratio tan alta Deuda/PIB se puede catalogar como excepcional. Considero que su estudio puede ser muy útil para mi formación económica en este campo.
+
+-	Desarrollar tanto los conocimientos económicos (teóricos y prácticos) que he adquirido en la carrera, como en el curso de R.Studio. Especialmente, mi objetivo es mejorar mis habilidades en la presentación de **gráficos estáticos** que resulten útiles para mis futuras presentaciones sobre datos económicos.
+
+El objetivo del informe es tratar de dar respuesta a la siguiente pregunta:
+
+> ¿Debe preocuparnos la sostenibilidad de la deuda pública española?
+
+## 3. Datos utilizados{.tabset .tabset-pills}
+
+<br>
+
+### Comentarios
+
+A continuación se adjuntan todos los datos utilizados en el informe.
+
+<br><br>
+
+-----------------------
+
+### Tidy 
+
+```{r, echo = TRUE, warning= FALSE}
+
+deuda <- rio::import("./datos/Deuda.xlsx")
+
+```
+
+```{r, echo = TRUE, warning= FALSE}
+
+#Piramide de Población
+
+Pob_21 <- rio::import("./datos/Piramide.xlsx")
+
+library(readxl)
+Piramide <- read_excel("./datos/Piramide.xlsx", 
+                       col_types = c("text", "text", "text", 
+                                     "numeric", "numeric"))
+Pob_21 <- Pob_21 %>% 
+  dplyr::select(Pob,Sexo,Grupo_quinquenal) %>%
+  mutate(Pob_Porcentaje = Pob/42018307)
+
+```
+
+```{r, echo = TRUE, warning= FALSE}
+
+Partidas_g_pub <- rio::import("./datos/Partidas_Gasto.xlsx")
+
+library(readxl)
+Partidas_g_pub <- read_excel("./datos/Partidas_Gasto.xlsx", 
+                             col_types = c("text", "numeric", "numeric"))
+library(treemap)
+
+Partidas_g_pub_2021 <- Partidas_g_pub %>%
+      filter(Time == "2021") %>%
+      dplyr::select("Partidas_Gasto", "Gasto_millones") %>%
+      slice_max (Gasto_millones , n = 16)
+
+Partidas_g_pub_2016 <- Partidas_g_pub %>%
+  filter(Time == "2016") %>%
+  dplyr::select("Partidas_Gasto", "Gasto_millones") %>%
+  slice_max (Gasto_millones , n = 16)
+
+```
+
+```{r, echo = TRUE, warning= FALSE}
+#Ingresos/Gastos/Déficit
+
+cuentas_pub <- rio::import("./datos/cuentas_pub.xlsx")
+
+Cuentas_pub <- read_excel("./datos/Cuentas_pub.xlsx", 
+                          col_types = c("text", "numeric", "numeric", 
+                                        "numeric", "numeric", "numeric", 
+                                        "numeric", "numeric", "numeric", 
+                                        "numeric", "numeric", "numeric", 
+                                        "numeric", "numeric", "numeric", 
+                                        "numeric", "numeric", "numeric", 
+                                        "numeric", "numeric", "numeric", 
+                                        "numeric", "numeric", "numeric", 
+                                        "numeric", "numeric", "numeric"))
+
+
+cuentas_pub_long <- cuentas_pub %>% 
+  tidyr::pivot_longer(cols = 2:27, names_to = "año")
+
+cuentas_pub_long_gasto <- cuentas_pub_long %>%
+  filter(Tipo == "Gastos") 
+
+cuentas_pub_long_ingresos <- cuentas_pub_long %>%
+  filter(Tipo == "Ingresos") 
+
+cuentas_pub_long_df <- cuentas_pub_long %>%
+  filter(Tipo == "Deficit/Superavit") 
+
+
+Deficit_PIB <- rio::import("./datos/Deficit_PIB.xlsx")
+
+Deficit_PIB <- read_excel("./datos/Deficit_PIB.xlsx", 
+                          col_types = c("text", "numeric", "numeric"))
+
+
+```
+
+```{r, echo = TRUE, warning= FALSE}
+#Mapas Presión
+
+#aa <- rio::import("./datos/PF.xlsx")
+
+#rio::export(aa, "./datos/PF.csv")
+
+#PF <- read_csv("./datos/PF.csv", 
+#                            col_types = cols(date = col_date(format = "%Y/%m")))
+
+#PF_long <- PF %>% 
+# tidyr::pivot_longer(cols = 2:13, names_to = "time")
+
+#rio::export(PF_long, "./datos/PF_long.csv")
+
+PF_long <- rio::import("./datos/PF_long.csv")
+
+library(readr)
+PF_long <- read_csv("./datos/PF_long.csv", 
+                    col_types = cols(time = col_date(format = "%Y/%m"), 
+                                     value = col_number()))
+
+library(tidyverse)
+world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
+world <- world %>% filter(subregion != "Antarctica") %>% filter(admin != "Greenland")
+world <- world %>% dplyr::select(name, iso_a3, geometry)
+
+PF_geom_europ <- left_join(PF_long, world, by = c("country" = "name")) 
+ 
+
+```
+
+```{r, echo = TRUE, warning= FALSE}
+
+#dependencia
+library(ggflags)
+library(countrycode)
+
+#aa <- rio::import("./datos/tasa_dep.csv")
+
+#tasa_dep <- aa %>%
+#  dplyr::select(geo,TIME_PERIOD, OBS_VALUE) 
+
+#rio::export(tasa_dep, "./datos/tasa_dep.xlsx")
+
+#aa <- rio::import("./datos/tasa_dep.csv")
+
+aa <- rio::import("./datos/tasa_dep.xlsx")
+
+library(readxl)
+tasa_dep <- read_excel("./datos/tasa_dep.xlsx", 
+                       col_types = c("text", "numeric", "numeric", 
+                                     "text"))
+tasa_dep <- tasa_dep %>%
+  dplyr::select(TIME_PERIOD, geo_1, OBS_VALUE)
+
+tasa_dep$code<-tolower(countrycode(tasa_dep$geo_1, origin = 'iso2c', destination = 'iso2c'))
+
+```
+
+```{r, echo = TRUE, warning= FALSE}
+
+#Esfuerzo/Presión fiscal
+
+#Esfuerzo/Presión fiscal
+
+PF_long <- rio::import("./datos/PF_long.csv")
+
+library(readr)
+PF_long <- read_csv("./datos/PF_long.csv", 
+                    col_types = cols(time = col_date(format = "%Y/%m"), 
+                                     value = col_number()))
+PF_long <- PF_long %>%
+  filter(time == "2020-01-01")
+
+#Pib_cap_eu <- rio::import("./datos/Pib_cap_eu.xlsx")
+
+#library(readxl)
+
+#Pib_cap_eu <- read_csv("./datos/Pib_cap_eu.xlsx", 
+#                        col_types = c("text", "numeric"))
+
+#rio::export(Pib_cap_eu, "./datos/Pib_cap_eu.csv")
+
+Pib_cap_eu <- rio::import("./datos/Pib_cap_eu.csv")
+
+Pib_cap_eu <- Pib_cap_eu %>%
+  rename("country" = "Countries")
+
+E_P <- left_join(Pib_cap_eu, PF_long, by = "country") 
+
+E_P_1 <- E_P %>%
+  filter(!country %in% c("Czech Republic", "malt")) %>%
+  rename("Presion_fisc" = "value") %>%
+  dplyr::mutate(esfuerzo_fisc = Presion_fisc/PIB_cap * 100) %>%
+  dplyr::mutate(Presion_fisc = Presion_fisc/100) %>%
+  dplyr::mutate(dif = Presion_fisc - esfuerzo_fisc) %>%
+  tidyr::pivot_longer(cols = 4:5, names_to = "tipo")
+
+pf <- E_P_1  %>%
+  filter(tipo == "Presion_fisc")
+
+ef <- E_P_1  %>%
+  filter(tipo == "esfuerzo_fisc")
+
+
+```
+
+```{r, echo = TRUE, warning= FALSE}
+
+#Tabla/gráfico tipo de interés medio 
+
+coste_deuda <- rio::import("./datos/coste_deuda.xlsx")
+
+bb <- coste_deuda
+
+coste_deuda_long <- coste_deuda %>% 
+  tidyr::pivot_longer(cols = 2:6, names_to = "tipo") %>%
+  mutate(value_1 = value/100)
+
+
+```
+
+```{r, echo = TRUE, warning= FALSE}
+
+#Tenedores
+
+aa <- rio::import("./datos/Distribucion_tenedores.xlsx")
+
+Distribucion_tenedores <- aa %>% pivot_longer(cols = 2:12, names_to = "tenedor") %>%
+rename("date" = "FECHA")
+
+#rio::export(Distribucion_tenedores,"./datos/Distribucion_tenedores.csv")
+
+library(readr)
+Dist_tenedores <- read_csv("./datos/Distribucion_tenedores.csv", 
+                                   col_types = cols(date = col_date(format = "%Y/%m"), 
+                                                    value = col_number()))
+
+
+Dist_tenedores <- Dist_tenedores %>%
+  filter (!tenedor == "TOTAL")
+
+```
+
+```{r, echo = TRUE, warning= FALSE}
+
+# Datos de la OCDE de la prevision del crecimiento del PIB eurozon
+
+crecimiento <- read_csv("./datos/crecimiento.csv", 
+                        col_types = cols(Value = col_number()))
+
+
+```
+
+
+```{r, echo = TRUE, warning= FALSE}
+
+#inflacion_esp <- read_excel("./datos/inflacion_esp.xlsx")
+
+#inflacion_esp <- inflacion_esp  %>% pivot_longer(cols = 2:25, names_to = "date")
+
+
+#rio::export(inflacion_esp,"./datos/inflacion_esp.csv")
+
+inflacion_esp <- read_csv("./datos/inflacion_esp.csv", 
+    col_types = cols(date = col_date(format = "%Y/%m")))
+
+```
+
+## 4. Evolución de la deuda pública española en democracia.
+
+En primer lugar, debemos definir qué entendemos por deuda pública.
+
+> **Definición técnica**: La deuda pública es la *deuda total* que mantiene un determinado estado con inversores particulares nacionales e internacionales. 
+
+Cuando nos referimos a la **deuda total** hacemos referencia a **la deuda de todo el conjunto de las administraciones públicas**. Para nuestro caso de estudio, corresponde a la suma de la deuda del estado central, de las 17 comunidades autónomas y de todas administraciones locales.
+
+Estamos hablando de una **variable acumulativa**. Esta acumulación se produce cuando el estado incurre en déficit público en un determinado ejercicio fiscal, por tanto, se ve obligado a la financiación externa mediante la emisión de  una variedad de activos financieros (*letras del tesoro, bonos, obligaciones, entre otros.*). Todo esto con el único fin de mantener un nivel de gasto que su renta, por si sola, no le permite alcanzar. Esta deuda se va amortizando a lo largo de los ejercicios a un determinado **tipo de interés** (prefijado por las autoridades monertárias) que va fluctuando, para cada economía, según la confianza que tengan los mercados financieros  en que el estado va a devolver el dinero.
+
+Su **sostenibilidad** depende de cuatro elementos interrelacionados: 
+
+1. **El nivel de deuda del que partamos**.
+2. **El resultado y tendencia del saldo fiscal** de los últimos ejercicios fiscales.
+3. **El coste de amortización de la deuda**, determinado por las expectativas del mercado y la política monetaria del banco central en concreto
+4. **El crecimiento económico**.
+
+
+### 4.1. El nivel de deuda del que partamos
+
+Con lo que corresponde al **primer punto**, en la actualidad (véase gráfico de la evolución de la deuda pública) disponemos de un punto de partida preocupante al alcanzar el **mayor nivel de endeudamiento estatal desde finales del siglo XIX**. La economía española ha experimentado un acusado crecimiento de su ratio Deuda/PIB en la última década.
+
+Note el lector que este dato (*el de punto de partida*) queda completamente condicionado por la llegada de la pandemia, esto se puede apreciar en la aceleración que se produce entre 2019 y 2020. Todo esto tiene una razón económica lógica; la covid -19 ha forzado la paralización de la actividad económica. Ante este escenario, la principal estratégica para el gobierno, recordemos, con el fin de proteger a los trabajadores y el tejido empresarial y hacer frente al aumento de gasto sanitario ocasionado con la pandemia, ha  sido llevar a cabo una política fiscal expansiva financiada por emisión de nueva deuda pública, respaldada casi en su totalidad por el Banco Central Europeo.
+
+
+```{r, echo = TRUE, warning= FALSE}
+
+aa <- ggplot() +
+  geom_col(data = deuda, aes(x = Date, y = Deuda_porcentaje_PIB, fill = Deuda_porcentaje_PIB)) +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_continuous(low="#F2D7D5", high="#641E16") + 
+  theme(panel.background = element_rect(fill = "transparent")) +
+  labs(title = "Evolución de la Deuda Española (%PIB)",
+       caption = "Fuente: Elaboración propia con datos de INEbase") +
+  labs (y = NULL) +
+  labs(x = NULL) +
+  guides (fill = FALSE)
+  
+aa
+
+```
+
+
+Aunque esta estrategia no es en sí criticable, ya que era lo que exigía la situación para hacer frente al inesperado shock, si lo es la falta de control presupuestario, especialmente en la última década una vez finalizada la crisis del 2008. Con esto entramos a analizar el **punto 2**.
+
+
+### 4.2. Resultado y tendencia del saldo fiscal.
+
+La economía española se ha caracterizado en los últimos años, a diferencia de sus vecinos europeos (*Alemania, Holanda…*) por la **acumulación de saldos presupuestarios deficitarios**. Como se puede observar (véase gráfico “*Evolución Ingresos/Gastos*”), en los últimos 25 años sol hemos presentado ciertos ejercicios con equilibrio presupuestario a principios del nuevo siglo y **hemos presentado 3 ejercicios (*2005, 2006, 2007*) con superávit**. Esta tendencia se agrava con la llegada de la crisis financiera del 2008, aunque queda totalmente justificada el no cumplimiento de la disciplina fiscal en época de crisis, si es verdad que en los posteriores años se ha optado por una **falta de esfuerzo por reducir los desequilibrios presupuestarios estructurales de la economía española**. Todo esto se traduce en lo anteriormente descrito, una menor disciplina fiscal implica un **pero punto de partida** para la llegada de las nuevas crisis (ejemplo claro lo hemos visto en el 2020).
+
+Como se puede observar, una vez mejorada la situación post-crisis financiera, no se optó por la reducción del gasto público, aunque su crecimiento exponencial previo a 2008 se ralentizó bien es verdad que no se ha visto reducido, sino más bien al contrario. Una conclusión queda clara, si queremos no empeorar nuestra situación de partida (*punto 1 de la sostenibilidad*) debemos de empezar a **ser austeros**, *no nos queda otra*. 
+
+> **A medio plazo, hemos de equilibrar SÍ o SÍ nuestro presupuesto para comenzar a reducir nuestro altísimo stock de deuda pública.**
+
+```{r, echo = TRUE, warning= FALSE}
+
+bb <- ggplot() +
+  geom_point(data = cuentas_pub_long_gasto, aes(x = año, y = value, color = Tipo,shape = Tipo), size = 3, color= "#A90729") +
+  geom_line(data = cuentas_pub_long_gasto, aes(x = año, y = value, color = Tipo), size = 1.5, group = "value", color= "#A90729") +
+  geom_point(data = cuentas_pub_long_ingresos, aes(x = año, y = value, shape = Tipo, color = Tipo),size = 4, color= "#E48297") +
+  geom_line(data = cuentas_pub_long_ingresos, aes(x = año, y = value, color = Tipo), size = 1.5, group = "value", color= "#E48297") +
+  scale_shape_manual(values = c(15,18)) +
+  geom_col(dat = cuentas_pub_long_df, aes(x = año, y = value, fill = value)) +
+  scale_fill_continuous(low="#86E1E7", high="#0597A1") +
+  theme(panel.background = element_rect(fill = "transparent")) +
+  labs(y = NULL) +
+  labs(x= NULL) +
+  guides (color = FALSE) +
+  guides (shape = FALSE) +
+  guides (fill = FALSE) +
+  geom_text(data = Deficit_PIB, aes(Time, Value, label = Value), y= 50000, size = 2, fontface = "bold") +
+  geom_text(data = Deficit_PIB, aes(Time, Value, label = "%"), y= 50000, hjust = -1.75, size = 1.5, fontface="bold") +
+  annotate(geom = "text",
+           x= 3,
+           y = 80000,
+           label = "Déficit/PIB",
+           size = 2.5) +
+  scale_y_continuous(breaks=c(200000, 400000, 600000), 
+                     labels=c("200.000 €", "400.000 €", "600.000 €")) +
+  theme(axis.text.y = element_text(size=rel(0.8), face = "bold")) +
+  theme(axis.text.x = element_text(angle = 70 , hjust = 1, face = "bold")) +
+  labs(title = "Evolución Ingresos/Gastos totales en millones de € (1995-2020)",
+       caption = "Fuente: Elaboración propia con datos de Eurostat DataBase") 
+
+bb
+
+```
+
+Esto requerirá de subidas de impuestos, de audaces recortes del gasto innecesario o tasas de crecimiento de la productividad mayores de las que lo hace la deuda. La fórmula está por determinar, pero una cosa queda clara, **cuanto antes nos mentalicemos de que hay que equilibra nuestras cuentas,  mejor para todos.**
+
+
+### 4.3. El coste de amortización de la deuda. {.tabset .tabset-pills}
+
+El lector puede pensar que estos datos en si tampoco están suponiendo en el momento que se está escribiendo este artículo un problema para la economía española. Pero, ¿a qué se debe esto?. Si estamos exponiendo que tenemos ciertos problemas **estructurales** en nuestro presupuesto, lo lógico (*haciendo uso de las teorías económicas*) sería pensar que también **deberíamos tener problemas para expandir nuestra deuda en los mercados financieros**. Pues bien, esto no es así, más bien lo contrario.
+
+La **respuesta** a esto la tenemos (*como ya apuntábamos en el trabajo grupal*) en los **bajos tipos de interés**, como se puede observar el coste de endeudamiento desde 2002 se encuentra hasta día de hoy en *”caída libre”*. Es por esto que **la economía española continúa endeudándose a un coste bajo**, por el momento. Existe una más que fundada expectativa de *asistencia financiera* por parte de la eurozona, por tanto, **los mercados confían en que nuestros socios monetarios no van a permitir que se eleven demasiado los diferenciales de riesgo entre los distintos títulos de deuda estatal**. De ahí que, a día de hoy, economías como la española (*que no están cumpliendo con sus obligaciones fiscales*) están siendo capaces de colocar sus pasivos en los mercados a tasas razonables.
+
+Si los dos primeros elementos descritos de sostenibilidad los suspendemos, este tercero **lo aprobamos con ayuda externa**. La economía española, **por sí sola no puede sostener niveles tan altos de endeudamiento**, lo logramos gracias al respaldo que nos proporcionan el ahorro alemán, holandés, entre otros. Pero, **esto no tiene por qué reproducirse en la siguiente década**.
+
+> La generosidad de los países ahorradores dentro de la eurozona no es ilimitada.
+
+<br>
+
+#### Tabla
+
+```{r, echo = TRUE, warning= FALSE, out.width = "75%"}
+
+knitr::kable(coste_deuda, digits = 2) %>%
+  kableExtra::kable_styling(fixed_thead = list(enabled = T,
+                                               background = "#088A85"),
+                            font_size = 15,
+                            ) %>%
+  column_spec(6,  color = "#000000", background = "#A9F5F2") 
+  
+
+```
+<br><br>
+
+-----------------------
+
+#### Gráfico
+
+```{r, echo = TRUE, warning= FALSE}
+
+aa <- ggplot() +
+  geom_point(data = coste_deuda_long, aes(x = FECHA, y = value_1, shape = tipo, color = tipo), size = 2.5) +
+  geom_line(data = coste_deuda_long, aes(x = FECHA, y = value_1, group = tipo, color = tipo), size = 1) +
+  scale_shape_manual(values = c(15, 16, 17,18, 19)) +
+  scale_color_manual(breaks = c("LETRAS", "BONOS", "OBLIGACIONES", "RESTO", "TIPO MEDIO"),
+                    values=c("#03A6FD", "#024B73", "#15017A", "#684BF9", "#04F3F7")) +
+  scale_y_continuous(labels = scales::percent) +
+  theme(panel.background = element_rect(fill = "transparent")) +
+  labs(title = "Evolución coste de la Deuda Española",
+       caption = "Fuente: Elaboración propia con datos del Tesoro Público") +
+  labs (y = NULL) +
+  labs(x = NULL) +
+  theme(legend.position = "bottom", 
+        axis.text.x = element_text(face = "bold", size = 8),
+        axis.text.y = element_text(face = "bold", size = 10)) +
+  guides (shape = FALSE) +
+  geom_hline(yintercept = 0,
+             size = 0.75,
+             colour = "#F70413",
+             linetype = "twodash")
+
+            
+aa
+
+```
+<br><br>
+
+-----------------------
+
+
+### 4.4. El crecimiento económico.
+
+Con lo que corresponde al cuarto factor de sostenibilidad poco a comentar, básicamente por una razón, **es muy complicado hacer estimaciones realistas sobre el crecimiento económico**. Aún más en un contexto como el actual donde la evolución de la pandemia puede marcar aún el crecimiento en los siguientes periodos. Bien es cierto que esta es un variable claves, ya es el denominador de la ratio Deuda/PIB, su evolución **para una misma deuda** puede cambiar considerablemente, es decir, puede ser una muy buena forma de amortizar deuda. Si tomamos en consideración las estimaciones mostradas para el crecimiento por parte de la OCDE que ya expusimos en nuestro trabajo grupal, podemos ver que si se cumplen las predicciones, hecho que me permita el lector poner en duda, hasta principios de 2023, en **el mejor de los casos** no vamos a recuperar los niveles pre-covid. Esto es un problema adicional a los anteriormente mencionados. 
+
+
+```{r echo=TRUE, warning=FALSE, out.width = "80%"}
+
+crecimiento_df <- crecimiento %>%
+  dplyr::select(LOCATION, TIME, Value) %>%
+  mutate(fecha = lubridate::yq(TIME)) %>%
+  mutate(value = round(Value, 2)) %>%
+  filter(LOCATION %in% c("ESP","EA17")) %>%
+  dplyr::select(-TIME,-Value)
+
+crecimiento <- ggplot(crecimiento_df, aes(fecha,value, color= LOCATION)) +
+  geom_line(size=2, linetype=7) +
+  scale_x_date(date_labels="%Y-%m",date_breaks  ="3 months") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  scale_color_manual(breaks = c("ESP","EA17"),values = c("#E04644","#7CCCE5")) +
+  facet_wrap(
+    vars(LOCATION), nrow = 2, ncol = 1) +
+  annotate("rect",
+           xmin = as.Date("2020-01-01"),
+           xmax = as.Date("2020-07-01"),
+           ymin = -Inf,
+           ymax = Inf,
+           alpha = 0.4,
+           fill = "grey") + 
+  geom_hline(yintercept = 100,
+             size = 1,
+             colour = "grey",
+             linetype = "dashed") +
+  
+  theme(panel.grid.major = element_line(colour = "gray90"),
+    panel.grid.minor = element_line(colour = NA),
+    plot.title = element_text(size = 14,
+        face = "bold"), panel.background = element_rect(fill = NA),
+    legend.position = "none") +
+  labs(title = "Predicción de crecimiento PIB Eurozona",
+    x = NULL, y = NULL, colour = NULL, subtitle = "Año 2019 en base 100",
+    caption = "Fuente:Elaboración propia con datos de la OCDE.") +
+  theme(strip.background =element_rect(fill="#424254")) +
+  theme(strip.text = element_text(colour = 'white')) +
+  theme(strip.text = element_text(size =  15))
+
+crecimiento
+
+```
+
+
+Todo hace indicar, al menos en un primer análisis y como una primera conclusión, **si tenemos problemas en el corto plazo sobre nuestro endeudamiento**.
+
+## 5. Problemas propios
+
+Dentro de la Eurozona disponemos de una gran variedad y tipologías diferentes de estructuras económicas, aunque muchas en la actualidad disponen de problemas o ratios altos de endeudamiento, la economía española presenta **problemas estructurares propios** que *bajo mi consideración* pueden lastrar en el medio plazo esa obligación de reducir nuestro endeudamiento, anteriormente mencionada. Note el lector, que por brevedad del artículo no vamos a profundizar en cada subtema, simplemente destacar los problemas de la forma los más resumida posible.
+
+Estos **problemas** cabe remarcar que **pueden ser clave** para el estudio de sostenibilidad. ¿Por qué? Básicamente, porque todos los a continuación expuestos, tienen una implicación directa e importante en las partidas de gastos/ingresos públicos. Su estudio, puede darnos respuesta de cómo hemos de modificar nuestra estructura presupuestaria para garantizar el equilibrio presupuestario, o al menos, *si queremos ser menos ambiciosos y puesto que no es objetivo mío defender o no como ha de ser el saldo presupuestario en una determinada economía*, garantizar la reducción de nuestro *stock* de deuda.
+
+### 5.1. Problema de sostenibilidad de las pensiones públicas.
+
+En primer lugar, un problema importante es la **sostenibilidad de nuestro sistema de pensiones**. 
+
+En España **predomina un sistema de reparto**, es decir, un sistema donde las pensiones públicas cubren la mayor parte de los ingresos tras la jubilación. A grandes rasgos, el sistema se basa en que los cotizantes (*población activa en un período determinado*) cotizan para financiar las pensiones de los jubilados a cambio, y esto es **muy importante**, de **devengar un derecho de pensión en el futro**. Esta última consideración es clave, el **cotizante no está cotizando para recibir lo que por sencillez vamos a definir como “lo ahorrado” mediante el mecanismo proporcionado por la seguridad social**, sino más bien para tener **derecho a una determinada pensión en el futuro** . Por tanto, la cuantía a recibir en el futuro depende de la capacidad del sistema para generar liquidez, es decir, si hay buena situación económica, no se acumulan saldos deficitarios de forma consecutiva en la seguridad social y disponemos de pleno empleo y una tasa de jubilado por trabajador baja, el sistema no tiene porque fallar.
+
+El problema es que ninguno de los supuestos de partida se cumple. Desde la llegada de la crisis financiera España **acumula importantes déficits en su saldo de seguridad social**, la **tasa de desempleo estructural** desde 1978 se sitúa por encima del **15%**, **la esperanza de vida en España crece todos los años** situándose como una de las mayores del mundo por encima de los 83 (dato muy positivo) y, lo más preocupante, la **tasa pensionista/cotizante crece exponencialmente**. 
+
+
+```{r, echo = TRUE, warning= FALSE}
+
+aa <- ggplot(Pob_21, aes(x = Grupo_quinquenal,
+                        y = Pob_Porcentaje,
+                        fill = Sexo)) +
+      geom_col(data = subset(Pob_21, Sexo == "Hombres") %>% 
+             mutate(Pob_Porcentaje = -Pob_Porcentaje),
+           width = 0.5, fill = "#0B615E") +
+      geom_col(data = subset(Pob_21, Sexo == "Mujeres"),
+           width = 0.5, fill = "#04B4AE") + 
+      coord_flip() +
+  theme(panel.background = element_rect(fill = "transparent")) +
+  scale_y_continuous(
+    breaks = c(seq(-0.06, -0.02, by = 0.02), 
+               seq(0, 0.06, by = 0.02)),
+    labels = scales::percent (c(seq(-0.06, -0.02, by = 0.02) * -1, 
+               seq(0, 0.06, by = 0.02)))) +
+  labs(y = "Hombre/Mujer población en %") +
+  labs(x= NULL) +
+  labs(title = "Pirámide de la población empadronada en España",
+       caption = "Fuente: Elaboración propia con datos de INEbase") +
+  annotate(geom = "text",
+           x= "85 a 89",
+           y = 0.035,
+           label = "Mujeres",
+           size = 4) +
+  annotate(geom = "text",
+           x= "85 a 89",
+           y = - 0.035,
+           label = "Hombres",
+           size = 4) +
+  geom_vline(xintercept = "35 a 39",
+             size = 0.5,
+             colour = "red",
+             linetype = "dashed") +
+  geom_vline(xintercept = "60 a 64",
+             size = 0.5,
+             colour = "red",
+             linetype = "dashed")
+
+aa
+```
+
+**La evolución demográfica** (*véase pirámide poblacional y estimación para lo que resta de s.XXI sobre la tasa de dependencia*) también preocupa. A medida que una sociedad envejece, aumenta el número de pensionistas respecto a la población en edad de trabajar (lo que se conoce como *tasa de dependencia/vejez*) por lo que, **si se mantienen los otros parámetros del sistema sin cambios, el gasto en pensiones será mayor**. Como se puede observar con los datos ofrecidos por el *INE* y *Eurostat*, esto especialmente va a ocurrir en los próximos 20 años, con la jubilación de la generación conocida como *”babyboomers”*, salvo que se disparara la natalidad o tuviéramos una entrada **masiva** de migrantes con edad de trabajar en las próximas décadas. 
+
+```{r, echo = TRUE, warning= FALSE, out.width = "65%"}
+aa <- ggplot(tasa_dep, aes(x = geo_1, OBS_VALUE, country = code, size = 10)) +
+  scale_fill_brewer(palette = "Spectral") +
+  geom_flag(aes(geo_1, OBS_VALUE, country = code), size = 10) +
+  transition_manual(TIME_PERIOD) +
+  coord_flip() +
+  theme(panel.background = element_rect(fill = "#303637")) + 
+  labs (x = NULL) +
+  labs (y = "Tasa de dependencia vejez en %") +
+  theme(panel.grid.major = element_line(colour = NA)) +
+  labs(title = "Estimación para el año: {current_frame}",
+       caption = "Datos de Eurostat")  + theme(axis.line = element_line(colour = "white"),
+    axis.ticks = element_line(colour = "white"),
+    panel.grid.major = element_line(colour = "azure3"),
+    panel.grid.minor = element_line(colour = "azure3"),
+    axis.title = element_text(colour = "white"),
+    axis.text = element_text(colour = "azure3"),
+    axis.text.y = element_text(colour = "azure3"),
+    axis.text.x = element_text(colour = "white"),
+    plot.title = element_text(colour = "white"),
+    legend.text = element_text(colour = "azure3"),
+    legend.title = element_text(colour = "azure3"),
+    panel.background = element_rect(fill = "azure3",
+        colour = "azure3"), plot.background = element_rect(fill = "azure3",
+        colour = "azure3"), legend.key = element_rect(fill = "azure3",
+        colour = "azure3"), legend.background = element_rect(fill = "azure3",
+        colour = "azure3")) + labs(colour = "white")
+
+gganimate::animate(aa, nframes = 100, fps = 25, end_pause = 1)
+
+```
+
+<br>
+
+Sin entrar a valorar si el sistema en si es sostenible o no, una cosa queda clara, si toda esta tendencia en los últimos años sigue su cauce, el **gasto en pensiones va a ser cada vez mayor**. En el siguiente apartado (*5.2*) analizaremos porque esto puede ser un problema para la sostenibilidad de las pensiones.
+
+### 5.2 Patrón de gasto público. {.tabset .tabset-pills}
+
+Como se puede observar el patrón de gasto de la economía española se caracteriza **especialmente** por tener un **gran desembolso en el pago de pensiones**. Recordemos que hemos dicho que esta partida *seguramente* se va a ver incrementada en el futuro. ¿Por qué es una variable tan importante? Porque representa aproximadamente un 40% del gasto total, como se puede observar, **no es un dato propio de la situación económica actual**, este patrón es común para todo el período del 2000, véase *"patrón de gasto para 2016"* (*por motivos de similitud he decidido representar el 2016*). 
+
+Mi hipótesis es clara, queramos o no, la principal partida a reducir el elevado gasto es la de pensiones, el problema  es que cambiar ahora de sistema es una tarea casi imposible por su complejidad de implementación, además, eso implicaría un coste para alguna generación que aporta, pero posteriormente no recibiría prestación de futuro. Aunque una solución da para un artículo bastante largo, simplemente comentar que cuando mejoremos nuestro nivel de endeudamiento (**principal objetivo**) tendremos que empezar a cuestionarnos este problema y tratar de darle solución. 
+
+Note el lector que hay otros problemas por la parte del gasto también remarcables, el gasto en desempleo es superior a lo que destinamos a educación o sanidad, al igual (**aunque este relativamente bajos los tipos**) el gasto que dedicamos a la partida de pago de intereses de la deuda. Todas estas partidas agrupadas representan aproximadamente un 60% del gasto total. Bajo mi punto de vista, es al menos para reflexionar si nuestro patrón de gasto es adecuado. Mención especial quiero hacer al gasto sobre la deuda, para que note el lector la importancia de tener o no ratios elevados de deuda es que sin esta se podria destinar aproximadamente un 50% más a partidas como sanidad, educación o pensiones.
+
+> Si la decisión política para reducir el déficit es actuar sobre el gasto, las partidas en las que debemos actuar hoy son pensiones, desempleo e intereses pagados.
+
+Con esto **no estoy dando a entender que se reduzca el gasto social sin poner solución a los desequilibrios**, es totalmente *insensato* reducir únicamente las ayudas estatales porque eso solo agrava el problema, más bien considero que debería ser al contrario. Por ejemplo, hacer que no sea necesario que existan ayudas por desempleo, **fomentado el empleo**, esto si sería una forma efectiva para reducir la partidas de gasto. Lo mismo puede ser aplicable para el pago de intereses, aunque no depende de nosotros en parte el tipo que pagamos por ella, si depende de nosotros modificar el rátio de endeudamiento.
+
+<br>
+
+#### Patrón de gasto público 2021.
+
+
+```{r, echo = TRUE, warning= FALSE}
+
+componentes_europa <- treemap(Partidas_g_pub_2021,
+                              index="Partidas_Gasto",
+                              vSize="Gasto_millones",
+                              type="index",
+                              title = "Gasto 2021",
+                              palette="Spectral",
+                              border.col=c("white"), 
+                              border.lwds=2, 
+                              fontface.labels=1,
+                              bg.labels=c("transparent"),              
+                              align.labels=c("center", "center"),                                 
+                              overlap.labels=0.75) 
+
+```
+<br><br>
+
+-----------------------
+
+#### Patrón de gasto público 2016.
+
+```{r, echo = TRUE, warning= FALSE}
+
+componentes_europa <- treemap(Partidas_g_pub_2016,
+                              index="Partidas_Gasto",
+                              vSize="Gasto_millones",
+                              type="index",
+                              palette="Spectral",
+                              border.col=c("white"), 
+                              border.lwds=2, 
+                              fontface.labels=1,
+                              bg.labels=c("transparent"),              
+                              align.labels=c("center", "center"), 
+                              title = "Gasto 2016",
+                              overlap.labels=0.75) 
+
+```
+<br><br>
+
+-----------------------
+
+### 5.3. Productividad y mercado laboral.
+
+La **producción es una clave importantísima para reducir el endeudamiento** de una determinada economía. Si no aumentamos considerablemente nuestra deuda, podemos reducir la ratio simplemente haciendo crecer nuestro output. El problema en los últimos años al respecto se encuentra en la situación de nuestro mercado laboral. Disponemos **altas tasa de desempleo** sumado a una **baja productividad ** desde el inicio de la democracia, esto lastra nuestro crecimiento y nos **limita la posibilidad de amortizar deuda**.
+
+La **principal causa** del paro viene dada por la estructura de nuestro mercado de trabajo, donde se refleja una **excesiva temporalidad**. Para poner en contexto, en la última década, el promedio de temporalidad para España es del 25,2% frente al 13,9% de la UE. Todo esto queda estrechamente vinculado con nuestro modelo productivo, donde los servicios representan aproximadamente un 70% del PIB. A todo, hay que sumar la lacra que supone el paro juvenil, con una tasa igual o superior al 40%, líderes en nuestro entorno europeo.
+
+Por tanto, es necesario **remodelar el modelo productivo**. Hay afrontar una transformación de nuestra estructura económica con la finalidad de que haya trabajo, enfocándonos hacia la industria, la tecnología y servicios de más valor añadido.
+
+
+>**Reducir el desempleo y mitigar la precariedad del empleo, fomentando la productividad** tendría que ser una prioridad absoluta.
+
+<br>
+
+::: columns
+::: {.column width="32%"}
+-   **Problemas del mercado laboral**
+
+```{r, echo = FALSE, out.width = "60%"}
+tweetrmd::tweet_embed("https://twitter.com/JuanLuis_JG/status/1473940981976289281?s=20", theme = "light", align = "center", dnt = TRUE, maxwidth = 400)
+```
+:::
+
+::: {.column width="1%"}
+<!-- an empty Div (with a white space) haciendo de separador -->
+:::
+
+::: {.column width="32%"}
+-   **Falta de productividad**
+
+```{r, echo = FALSE, out.width = "60%"}
+tweetrmd::tweet_embed("https://twitter.com/elEconomistaes/status/1474738506568196098?s=20", theme = "light", align = "center", dnt = TRUE, maxwidth = 400)
+```
+:::
+
+::: {.column width="1%"}
+<!-- an empty Div (with a white space) haciendo de separador -->
+:::
+
+::: {.column width="32%"}
+-   **Paro juvenil**
+
+```{r, echo = FALSE, out.width = "60%"}
+tweetrmd::tweet_embed("https://twitter.com/EU_Social/status/1301528270693900288?s=20", theme = "light", align = "center", dnt = TRUE, maxwidth = 400)
+```
+:::
+:::
+
+<br>
+
+### 5.4. ¿Pagamos pocos o muchos impuestos en españa?
+
+Este punto, simplemente lo quiero utilizar para mostrar porque considero que en España **pagamos suficientes impuestos**. Por tanto, no considero que sea razonable utilizar la estrategia de incremento de ingresos públicos para reducir el déficit, como mínimo mantenerse o incluso, porque no, reducir la presión fiscal. 
+Para estudiar si pagamos muchos o pocos impuestos utilizaremos medidas ampliamente utilizadas:
+
+1. **Presión Fiscal** : *cantidad de dinero en concepto de tributos que los obligados tributarios pagan al Estado en comparación con el producto interior bruto (PIB).*
+
+2. **Esfuerzo Fiscal** :  *indicador que se utiliza para evaluar la incidencia recaudatoria del estado en la producción de la sociedad. Este mide la relación entre el porcentaje que suponen los ingresos públicos respecto al producto interior bruto (PIB), así como a la renta per cápita.*
+
+Como son conceptos complejos y para facilitar lector la comprensión de este apartado he considerado que lo mejor es aportar un corto video donde se explica de forma mucho más detallada las diferencias y signifivados:
+
+<br>
+
+```{r, eval = TRUE, echo = FALSE}
+
+embed_url("https://www.youtube.com/watch?v=0O2mJDwWJt0&t=434s") %>%
+    use_align("center") %>%
+    use_rounded()
+
+```
+
+<br>
+
+España, como se puede observar en el mapa mundi es uno de los **países de menor presión fiscal de toda la eurozona**. Paralelamente, el **esfuerzo fiscal se sitúa entre los más altos**, por encima de algunos países como Dinamarca, Suecia, Finlandia, etc. Como se puede observar en el gráfico de *Presión vs Esfuerzo fiscal* la diferencia es menor para el caso español. Esto indica que el **esfuerzo exigido en el pago de impuestos es mayor** para a los españoles. Esta diferencia se explica, fundamentalmente, porque el sistema fiscal español no es capaz de recaudar más dinero cuando se producen subidas de impuestos. La economía sumergida y el enorme impacto sobre la actividad productiva de un aumento de la presión fiscal explican esta distorsión. Además, el índice de presión fiscal tampoco tiene en cuenta el esfuerzo que requiere la generación de PIB, puesto que una misma presión fiscal puede exigir sacrificios fiscales muy distintos, puesto que presión fiscal y esfuerzo fiscal son conceptos diferentes.
+
+ 
+```{r, echo = TRUE, warning= FALSE}
+
+ mapa_2 <- ggplot() +
+  geom_sf(data = PF_geom_europ, aes(geometry = geometry, fill = value )) +
+  theme_void()  +
+  theme(plot.subtitle = element_text(family = "serif", face = "italic"),
+        plot.title = element_text(family = "serif", face =  "italic")) +
+  labs(title = "Mapa: Presión Fiscal", fill = "Ingresos/PIB")  +
+  scale_fill_continuous(low="#FEE5FB",high="#63015A") +
+  lims(y = c(35,85)) +
+  lims(x = c(-35, 60)) + transition_manual(time) +
+  labs(title = "Presión fiscal en el entorno europeo (2009-2020)",
+       subtitle = "Periodo: {current_frame}",
+       caption = "Datos extraídos de Eurostat Database") 
+
+
+gganimate::animate(mapa_2, nframes = 200, fps = 25, end_pause = 6)
+
+```
+
+<br>
+
+```{r, echo = TRUE, warning= FALSE, out.width = "85%"}
+
+p <- ggplot(E_P_1) +
+  geom_segment(data = ef ,
+               aes(x = value, y = country,
+                   yend = pf$country, xend = pf$value), 
+               color = "#8D8E91",
+               size = 2.5, 
+               alpha = .5) +
+  geom_point(aes(x = value, y = country, color = tipo), size = 4, show.legend = TRUE) +
+  scale_color_manual(breaks = c("Presion_fisc","esfuerzo_fisc"), 
+                     values = c("#FF0000", "#0040FF"), 
+                     labels = c("Presión Fiscal", "Esfuerzo Fiscal")) +
+  ggtitle("Presión Fiscal vs Esfuerzo Fiscal para la Eurozona 2020") +
+  labs(caption = "Elaboración propia con datos de Eurostat") +
+  theme(panel.background = element_rect(fill = "transparent")) +
+  labs(x = NULL) +
+  labs(y = NULL) +
+  guides(color= guide_legend(title = "Indicador")) +
+  theme(axis.text.x = element_text(face="bold", vjust=-0.5, size= 10)) +
+  theme(axis.text.y = element_text(face="bold", vjust=1.5, size= 8)) +
+  geom_text(data = ef ,
+            aes(x = value, y = country, label = scales::percent(value, 2), colour = tipo), vjust = 0.25,hjust = 1.45, size = 2.75) +
+  geom_text(data = pf ,
+            aes(x = value, y = country, label = scales::percent(value, 2), colour = tipo), vjust = 0.25,hjust = - 0.45, size = 2.75) +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y = element_text(vjust = 0)) +
+  theme(legend.position = "bottom")
+
+
+p
+
+```
+
+<br>
+
+
+## 6. Conclusiones
+
+Una vez expuesto las conclusiones anteriores, podemos afirmar que **la sostenibilidad va a depender** en mayor medida de **tres supuestos** importantes: 
+
+1) **Que el crecimiento nominal del PIB retoma el dinamismo en los próximos años.**
+2) **Que el entorno de tipo de interés sigue siendo favorable.**
+3) **Que el saldo presupuestario se corrija en la próxima década.**
+
+Con lo que corresponde al **primer supuesto**, recordemos lo anteriormente mencionado, es muy complicado hacer estimaciones, pero si tomamos como referencia “ *las más optimistas*” una cosa queda clara, va a ser una *bala* que tardaremos mínimo 2 años en poder utilizar.
+En segundo lugar, **el supuesto dos**, bajo mi consideración el **más importante en el corto plazo** es la evolución de los tipos de interés. El pasado 30 de diciembre del 2021, el INE público su dato adelantado de inflación, la economía española (*como ya tratamos en el trabajo grupal*) sigue coleccionando récords. Como se puede observar, la inflación prosigue imparable su escalada. El **IPC se ha situado en el 6,7% interanual** en el mes de diciembre (frente al 5,8% previsto por los expertos), liderado una vez más por un incremento de los precios energéticos (electricidad, petróleo, gas...) que ya está permeando en el resto de la cesta de bienes y servicios. 
+
+```{r, echo = TRUE, warning= FALSE}
+
+inflacion_esp_gen <- inflacion_esp %>% filter(tipo == "general")
+
+inflacion_esp_sub <- inflacion_esp %>% filter(tipo == "subyacente")
+
+
+esp <- ggplot() +
+  
+  geom_line(data = inflacion_esp_gen, aes(date, value, colour = tipo), size = 1.5) +
+  geom_point(data = inflacion_esp_gen, aes(date, value,  colour = tipo, shape = tipo), size = 3) +
+  geom_text(data = inflacion_esp_gen, aes(date, value, label = value, colour = tipo), vjust = 2.5,hjust = 0.5, size = 3) +
+  geom_text(data = inflacion_esp_gen, aes(date, value, label = "%", colour = tipo), vjust = 2.5,hjust = -1, size = 3) +
+  
+  geom_line(data = inflacion_esp_sub, aes(date, value,  colour = tipo), size = 1.5) +
+  geom_point(data = inflacion_esp_sub, aes(date, value, colour = tipo, shape = tipo), size = 3) +
+  geom_text(data = inflacion_esp_sub, aes(date, value, label = value, colour = tipo), vjust = -1.5,hjust = 0.75, size = 3) +
+  geom_text(data = inflacion_esp_sub, aes(date, value, label = "%", colour = tipo), vjust = -1.5,hjust = -0.5, size = 3) +
+  scale_shape_manual(values = c(15,17)) +
+  
+  scale_color_manual(breaks = c("general", "subyacente"),
+                     values=c("#7C2203", "#F99F5C")) +
+  
+  geom_hline(yintercept = 0,
+             size = 0.25,
+             colour = "black",
+             linetype = "dashed") +
+  
+  scale_x_date(date_labels="%b %y", date_breaks  = "1 month") +
+  
+  theme(axis.text.x = element_text(angle = 70, hjust = 1)) +
+  
+  lims(y= c(-3, 7)) +
+  labs(x = NULL) +
+  labs(caption = "Fuente: Elaboración propia con datos de INEbase") +
+  theme(panel.grid.major = element_line(colour = NA)) + 
+  theme(panel.background = element_rect(fill = "transparent")) +
+  theme(legend.title=element_blank()) +
+  theme(axis.title.y=element_blank(), axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) +
+  labs(colour = "General")  +
+  theme(plot.subtitle = element_text(colour = "gray24"),
+                                    panel.grid.major = element_line(colour = "white"),
+                                    panel.grid.minor = element_line(colour = "white"),
+                                    panel.background = element_rect(colour = "white"),
+                                    legend.position = "bottom", legend.background = element_rect(fill = "transparent"),
+                                    legend.direction = "horizontal") +
+  labs(title = "Evolución anual del IPC", subtitle = "Índice general y subyacente.") +
+  guides(shape = FALSE) 
+
+esp
+
+
+```
+
+
+Con lo que corresponde al **tercer supuesto**, déjeme el lector poner en duda que algún gobierno tenga la valentía de hacer las reformas estructurales que hemos planteado, solo el simple hecho proponer un ajuste en el sistema de pensiones públicas puede ocasionar un coste político de elevadas dimensione. Recordemos que estamos hablando de aproximadamente de 9.000.000 de pensionistas, es de decir, de votantes, dato que por cierto va en exponencial aumento.
+
+Otro aspecto interrelacionado con estos tres supuestos los tenemos en la distribución por tenedores de deuda pública española. Como se puede observar, aproximadamente el **50% de la deuda pública española está en manos de inversores extranjeros**, adicionalmente, más el 25% corresponde al BCE y el Banco de España.  Estamos dentro de la eurozona, **sin autoridad monetaria**, todo queda supeditado a este respecto por el BCE. Tenemos uno de las ratios más elevados de la eurozona, **si no empezamos a hacernos nuestras propias cuentas, rápidamente la *euro-cámara* las hará por nosotros**. Los bancos centrales han incrementado su presencia en los últimos 5 años gracias a la flexibilización cuantitativa del BCE, pero esto no va a durar para siempre, **la expansión monetaria más tarde que pronto tocará su fin**, y, desgraciadamente, no nos pilla preparados (*alumnos a día de hoy*) para afrontar el difícil reto, que no **imposible**, de reducir nuestro endeudamiento.
+
+
+```{r, echo = TRUE, warning= FALSE}
+
+aa <- ggplot() +
+  geom_col(data = Dist_tenedores, aes(x = reorder(tenedor, value), y = value, fill = value)) +
+  scale_fill_continuous(low="#5CD1FE", high="#025271") + 
+  coord_flip() +
+  guides (fill = FALSE)+
+  labs (y = NULL) +
+  labs(x = NULL) +
+  theme(axis.text.x = element_text(size = 7.5, face = "bold"),
+        axis.text.y = element_text(size = 8, face = "bold")) +
+  theme(panel.background = element_rect(fill = "transparent")) +
+  labs(title = "Distribución por tenedores de la deuda (2002-2020)",
+       subtitle = "Periodo: {current_frame}",
+       caption = "Fuente: Elaboración propia con datos del Tesoro Público") +
+  transition_manual(date) +
+  scale_y_continuous(labels = scales::unit_format(unit = "M€", scale = 1e+0))
+ 
+
+
+gganimate::animate(aa, nframes = 100, fps = 10, end_pause = 50)
+
+```
+
+> Al igual que con la inflación, debemos empezar a tomarnos muy enserio la situación de nuestro endeudamiento.
+
+## 7. Referencias 
+
+<br>
+
+- [Página web de IneBase](https://www.ine.es/dyngs/INEbase/listaoperaciones.htm)
+
+- [Página web de EurostatDatabase](https://ec.europa.eu/eurostat/data/database)
+
+- [Página web de Economipedia](https://economipedia.com/)
+
+- [Página web de la Dirección General del Tesoro Público](https://www.tesoro.es/ca)
+
+- Artículo del economista: [España está entre los cinco países de la OCDE con mayor esfuerzo fiscal](https://www.eleconomista.es/economia/noticias/10724032/08/20/Espana-esta-entre-los-cinco-paises-de-la-OCDE-con-mayor-esfuerzo-fiscal.html)
+
+- Artículo Juan Ramón Rallo: [Tomarse en serio la deuda](https://blogs.elconfidencial.com/economia/laissez-faire/2020-09-14/deuda-pib-espana-tomarse-en-serio_2746107/)
+
+- Adrià Morron Salmonero, CaixaBank Research [¿Debe preocuparnos la sostenibilidad de la deuda pública en la eurozona?](https://www.caixabankresearch.com/es/economia-y-mercados/sector-publico/debe-preocuparnos-sostenibilidad-deuda-publica-eurozona)
+
+- Canal de Youtube [EconomiaPills](https://www.youtube.com/c/EconomicPills)
+
+- Me he inspirado en el trabajo [“Inflación en tiempos de pandemia” ha sido elaborado por Jesus Lloret Quero, Francisco Martínez Caballero y Vicent Mompó Crespo](https://github.com/fran2200/trabajo_BigData_equipo) 
+
+- [Página web The R Graph Gallery](https://www.r-graph-gallery.com/)
+
+- Artículo del economista: [La inflación no encuentra techo en España](https://www.eleconomista.es/economia/noticias/11545849/12/21/La-inflacion-no-encuentra-techo-en-Espana-el-IPC-se-dispara-al-67-en-diciembre-y-toca-maximos-de-tres-decadas.html)
+
+- Artículo de Adrián Francisco Varela: [Inversores extranjeros, bancos centrales e instituciones europeas](https://www.businessinsider.es/casi-mitad-deuda-publica-espanola-manos-extranjeras-541399)
+
